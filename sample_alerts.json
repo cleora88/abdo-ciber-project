@@ -1,0 +1,38 @@
+[
+  {
+    "title": "Online Banking Brute-Force Login",
+    "source": "Online banking login system",
+    "scenario": "Credential attack against retail banking customers",
+    "alert": "SIEM Alert ID BNK-LOGIN-2026-001 | Online banking portal detected 1,247 failed logins in 18 minutes against 43 customer accounts. Source IPs include 185.199.108.44 and 91.240.118.172. Several attempts used usernames from a previous credential leak. Five accounts were locked after multiple failed login attempts. User agent: python-requests/2.31. Possible brute-force or password spraying campaign targeting retail banking customers."
+  },
+  {
+    "title": "Phishing Email Targeting Bank Employees",
+    "source": "Email security gateway",
+    "scenario": "Credential phishing against internal staff",
+    "alert": "Email Gateway Alert BNK-MAIL-2026-014 | 38 employees in treasury and customer support received an urgent message from payroll-update@secure-bank-benefits.com. Subject: Urgent password reset required for Q2 payroll. Body asks users to verify your account at https://bank-portal-secure-login.example.com/auth. Attachment name: Benefits_Update.html. Sender domain was registered recently and fails DMARC alignment. Possible phishing campaign targeting bank employee credentials."
+  },
+  {
+    "title": "SQL Injection Attempt on Banking Portal",
+    "source": "Web application firewall",
+    "scenario": "Public-facing banking portal exploitation",
+    "alert": "WAF Alert BNK-WAF-2026-077 | Public online banking portal /accounts/search received suspicious request from 203.0.113.88. Payload: accountId=105 OR '1'='1' UNION SELECT card_number, cvv, expiry_date FROM cards--. WAF blocked the request and triggered SQL injection signature. Target asset: web-banking-prod-01. Customer card data exposure risk if exploit succeeds."
+  },
+  {
+    "title": "Suspicious ATM Withdrawals",
+    "source": "ATM fraud monitoring",
+    "scenario": "Potential cash-out or card compromise",
+    "alert": "ATM Fraud Alert BNK-ATM-2026-032 | Customer account CUST-884201 had 11 cash withdrawals from ATMs in three cities within 42 minutes. Locations: Casablanca, Rabat, and Marrakech. Total withdrawal amount: 48,500 MAD. Card-present transactions occurred shortly after failed PIN attempts at ATM-RA-112. Pattern differs from customer baseline and may indicate card cloning or account takeover."
+  },
+  {
+    "title": "Abnormal Outbound Traffic and Data Exfiltration",
+    "source": "Firewall and proxy logs",
+    "scenario": "Possible exfiltration of sensitive bank data",
+    "alert": "Firewall Alert BNK-FW-2026-209 | Core banking reporting server FIN-REPORT-02 uploaded 3.8 GB to external host 198.51.100.77 over HTTPS between 02:10 and 02:42. Destination domain: files-sync-cloud.example.net. The server normally sends less than 50 MB outbound per day. DLP detected filenames matching customer_statement_export_*.csv. Possible data exfiltration from internal banking network."
+  },
+  {
+    "title": "Malware Alert on Employee Workstation",
+    "source": "Endpoint detection and response",
+    "scenario": "Endpoint compromise inside bank network",
+    "alert": "EDR Alert BNK-EDR-2026-116 | Employee workstation WS-CREDIT-044 executed suspicious PowerShell command that downloaded payload from http://updates-office365.example.org/a.ps1. EDR quarantined file with SHA256 hash 2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881. Process attempted credential dumping behavior and connection to 45.77.12.89. User belongs to credit operations department."
+  }
+]

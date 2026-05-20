@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+.env
+.streamlit/
+reports/*.json
+reports/*.txt
+reports/*.integrity.json
+!reports/.gitkeep
