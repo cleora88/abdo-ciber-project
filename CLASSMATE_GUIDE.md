@@ -105,9 +105,14 @@ http://localhost:8501
 3. Click **Run SOC Analysis**.
 4. Show the rule-based pre-analysis.
 5. Show the LLM SOC analysis.
-6. Show the MITRE ATT&CK mapping.
-7. Open the dashboard tab.
-8. Open the verification tab and verify a saved report.
+6. Show the IOC enrichment table and confidence comparison.
+7. Show the incident timeline.
+8. Show the MITRE ATT&CK mapping.
+9. Click an analyst action button, such as **Escalate to Tier 2**.
+10. Download the JSON or TXT report.
+11. Open the dashboard tab.
+12. Open the verification tab and verify a saved report.
+13. Open the presentation tab if you need a quick explanation for the class.
 
 ## 10. Common Problems
 
@@ -145,5 +150,6 @@ Local models sometimes return text that is not valid JSON. Run the analysis agai
 
 - This project does not use OpenAI API.
 - Alerts are analyzed locally through Ollama.
+- IOC enrichment is local and heuristic by default; it gives manual lookup links without sending full bank alerts online.
 - It is an educational prototype, not a production SOC tool.
 - Final incident decisions should always be reviewed by a human analyst.

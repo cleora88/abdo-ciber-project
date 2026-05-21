@@ -40,6 +40,13 @@ No OpenAI API is used.
 - HMAC signature generation using a secret key
 - Report integrity verification feature
 - Dashboard with analyzed alert count, severity chart, attack type chart, and latest report hash
+- Privacy-conscious IOC enrichment with risk scores and manual lookup links
+- Rule confidence vs LLM confidence comparison
+- Severity color badges
+- Incident response timeline
+- Analyst decision buttons for confirm, false positive, escalation, and closure
+- JSON and TXT report download buttons
+- Presentation tab for classroom demos
 - Error handling for Ollama availability, missing models, invalid JSON, and missing files
 
 ## Project Structure
@@ -50,6 +57,7 @@ bank_soc_llm_assistant/
 |-- app.py
 |-- ollama_client.py
 |-- rule_engine.py
+|-- threat_intel.py
 |-- mitre_mapper.py
 |-- report_generator.py
 |-- crypto_utils.py
@@ -104,8 +112,14 @@ The included `sample_alerts.json` contains realistic bank SOC scenarios:
 - Suspicious ATM withdrawals
 - Abnormal outbound traffic and possible data exfiltration
 - Malware alert on an employee workstation
+- Impossible travel login
+- Suspicious SWIFT transfer approval
+- Ransomware behavior on a file server
+- Privileged account misuse
 
 For a presentation, choose one scenario, run the rule-based pre-analysis, then show how the local LLM produces a structured SOC report. After report creation, use the verification tab to prove that the saved report has not been modified.
+
+The app also includes a **Presentation** tab with a simple architecture explanation and demo script.
 
 ## Expected LLM Output
 

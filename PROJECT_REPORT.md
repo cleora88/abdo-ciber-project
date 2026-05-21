@@ -25,6 +25,10 @@ The main objectives are:
 - Generate JSON and TXT incident reports.
 - Protect report integrity using SHA-256 and HMAC signatures.
 - Provide a simple dashboard for analyzed alerts.
+- Add privacy-conscious IOC enrichment.
+- Compare rule confidence with LLM confidence.
+- Add analyst decision actions and report downloads.
+- Add a presentation mode for classroom demonstrations.
 
 ## 4. System Architecture
 
@@ -37,6 +41,7 @@ The application is divided into small Python modules:
 - `report_generator.py`: Saves incident reports in JSON and TXT.
 - `crypto_utils.py`: Generates SHA-256 hashes and HMAC signatures.
 - `sample_alerts.json`: Contains realistic bank SOC demo alerts.
+- `threat_intel.py`: Performs local IOC enrichment and rule confidence scoring.
 
 ## 5. Local LLM Integration
 
@@ -74,7 +79,13 @@ The rule engine also extracts indicators of compromise:
 - email addresses
 - MD5, SHA-1, and SHA-256 hashes
 
-## 7. Structured LLM Output
+## 7. IOC Enrichment
+
+The application enriches extracted indicators locally. It assigns heuristic risk scores to IP addresses, URLs, emails, and hashes. It also provides manual lookup links for public sources such as VirusTotal, Talos, and urlscan.io.
+
+The full bank alert is not sent to online services. This design keeps sensitive alert content private while still giving analysts useful investigation links.
+
+## 8. Structured LLM Output
 
 The LLM is required to return JSON with these fields:
 
@@ -92,7 +103,7 @@ The LLM is required to return JSON with these fields:
 
 The application validates this response and handles invalid JSON or missing fields.
 
-## 8. MITRE ATT&CK Mapping
+## 9. MITRE ATT&CK Mapping
 
 The project includes a simple MITRE mapper:
 
@@ -104,7 +115,18 @@ The project includes a simple MITRE mapper:
 
 This mapping helps connect the alert analysis to a recognized cybersecurity framework.
 
-## 9. Report Generation
+## 10. Analyst Workflow
+
+The app includes workflow controls that allow an analyst to:
+
+- confirm an incident
+- mark an alert as a false positive
+- escalate to Tier 2
+- close an alert
+
+It also displays a generated incident timeline showing alert receipt, rule analysis, local LLM analysis, containment guidance, and report integrity.
+
+## 11. Report Generation
 
 After each analysis, the system saves:
 
@@ -119,11 +141,15 @@ Each report includes:
 - original alert text
 - selected model
 - rule-based findings
+- IOC enrichment
+- confidence comparison
 - LLM analysis
 - MITRE mapping
+- incident timeline
+- analyst decision
 - final incident report
 
-## 10. Cryptographic Integrity
+## 12. Cryptographic Integrity
 
 The project uses two integrity mechanisms:
 
@@ -132,7 +158,7 @@ The project uses two integrity mechanisms:
 
 The verification feature allows the user to select a saved report and check whether it has been modified.
 
-## 11. Dashboard
+## 13. Dashboard
 
 The dashboard shows:
 
@@ -144,7 +170,7 @@ The dashboard shows:
 
 This provides a small SOC management view for the demo.
 
-## 12. Demo Scenarios
+## 14. Demo Scenarios
 
 The project includes sample bank alerts for:
 
@@ -154,14 +180,18 @@ The project includes sample bank alerts for:
 - suspicious ATM withdrawals
 - abnormal outbound traffic and data exfiltration
 - malware alert on an employee workstation
+- impossible travel employee login
+- suspicious SWIFT transfer approval
+- ransomware behavior on a file server
+- privileged account misuse
 
-## 13. Privacy Benefits
+## 15. Privacy Benefits
 
 Local LLMs are useful for a bank SOC because alerts can contain sensitive information such as customer identifiers, infrastructure names, IP addresses, employee emails, and transaction patterns.
 
 By using Ollama locally, the project avoids sending sensitive alert data to an external cloud AI provider.
 
-## 14. Limitations
+## 16. Limitations
 
 - The project is an educational prototype.
 - LLM analysis can be wrong and must be reviewed by a human analyst.
@@ -170,6 +200,6 @@ By using Ollama locally, the project avoids sending sensitive alert data to an e
 - HMAC key management is simplified for demonstration.
 - Local model quality depends on the installed Ollama model.
 
-## 15. Conclusion
+## 17. Conclusion
 
 The Bank SOC Assistant shows how local LLMs can support security alert triage in privacy-sensitive environments. It combines deterministic rule checks with LLM-generated analysis, MITRE ATT&CK mapping, report generation, and integrity verification. This makes it suitable for a university cybersecurity presentation about AI-assisted SOC workflows.

@@ -20,6 +20,7 @@ from report_generator import (
     save_report,
 )
 from rule_engine import analyze_alert
+from threat_intel import calculate_rule_confidence, enrich_indicators
 
 
 BASE_DIR = Path(__file__).parent
@@ -191,6 +192,31 @@ def apply_styles() -> None:
         .light-json * {
             color: var(--bank-text);
         }
+        .severity-badge {
+            border-radius: 999px;
+            color: #ffffff;
+            display: inline-block;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0;
+            margin: 4px 0 10px 0;
+            padding: 6px 12px;
+        }
+        .severity-Informational { background: #6b7280; }
+        .severity-Low { background: #2563eb; }
+        .severity-Medium { background: #c28a12; }
+        .severity-High { background: #d97706; }
+        .severity-Critical { background: #dc2626; }
+        .workflow-card {
+            background: #ffffff;
+            border: 1px solid var(--bank-border);
+            border-radius: 8px;
+            padding: 14px 16px;
+            min-height: 94px;
+        }
+        .workflow-card strong {
+            color: var(--bank-navy);
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -201,6 +227,53 @@ def show_light_json(data: object) -> None:
     """Render JSON in a readable light-mode block."""
     formatted = json.dumps(data, indent=2, ensure_ascii=False)
     st.markdown(f"<pre class='light-json'>{html.escape(formatted)}</pre>", unsafe_allow_html=True)
+
+
+def show_severity_badge(severity: str) -> None:
+    safe = severity if severity in {"Informational", "Low", "Medium", "High", "Critical"} else "Medium"
+    st.markdown(f"<span class='severity-badge severity-{safe}'>{safe}</span>", unsafe_allow_html=True)
+
+
+def build_incident_timeline(rule_analysis: dict, llm_analysis: dict) -> list[dict]:
+    categories = ", ".join(rule_analysis.get("detected_categories", [])) or "no deterministic match"
+    severity = llm_analysis.get("severity", "Unknown")
+    return [
+        {
+            "stage": "Alert Received",
+            "description": "Bank SOC receives alert from the selected banking security source.",
+        },
+        {
+            "stage": "Rule Pre-Analysis",
+            "description": f"Rule engine detected: {categories}. Severity hint: {rule_analysis.get('severity_hint', 'N/A')}.",
+        },
+        {
+            "stage": "Local LLM Analysis",
+            "description": f"Ollama classified the event as {llm_analysis.get('attack_type', 'Unknown')} with {severity} severity.",
+        },
+        {
+            "stage": "Containment Guidance",
+            "description": "SOC analyst reviews recommended steps, affected assets, IOCs, and MITRE mapping.",
+        },
+        {
+            "stage": "Report Integrity",
+            "description": "Incident report is saved with SHA-256 hash and HMAC signature for later verification.",
+        },
+    ]
+
+
+def save_analysis_package(package: dict, analyst_decision: str) -> dict[str, str]:
+    report = build_report_record(
+        package["alert_text"],
+        package["model"],
+        package["rule_analysis"],
+        package["llm_analysis"],
+        package["mitre_mapping"],
+        package["ioc_enrichment"],
+        package["confidence_comparison"],
+        package["incident_timeline"],
+        analyst_decision,
+    )
+    return save_report(report)
 
 
 @st.cache_data(show_spinner=False)
@@ -254,6 +327,93 @@ def dashboard() -> None:
             st.info("No attack classifications yet.")
 
 
+def render_analysis_results(package: dict) -> None:
+    llm_analysis = package["llm_analysis"]
+    saved = package["saved"]
+
+    st.subheader("LLM SOC Analysis")
+    show_severity_badge(llm_analysis.get("severity", "Medium"))
+    show_light_json(llm_analysis)
+
+    st.subheader("Confidence Comparison")
+    confidence = package["confidence_comparison"]
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Rule confidence", f"{confidence['rule_confidence_score']}/100")
+    col2.metric("LLM confidence", f"{llm_analysis['confidence_score']}/100")
+    col3.metric("IOC risk", package["ioc_enrichment"]["overall_ioc_risk_level"])
+    st.caption(confidence["basis"])
+
+    st.subheader("IOC Enrichment")
+    enrichment_items = package["ioc_enrichment"].get("items", [])
+    if enrichment_items:
+        st.dataframe(
+            pd.DataFrame(
+                [
+                    {
+                        "indicator": item["indicator"],
+                        "type": item["type"],
+                        "risk_score": item["risk_score"],
+                        "risk_level": item["risk_level"],
+                        "notes": " | ".join(item.get("notes", [])),
+                        "lookup_links": " | ".join(item.get("lookup_links", [])),
+                    }
+                    for item in enrichment_items
+                ]
+            ),
+            use_container_width=True,
+        )
+        st.caption(package["ioc_enrichment"]["privacy_note"])
+    else:
+        st.info("No extracted IOCs were available for enrichment.")
+
+    st.subheader("Incident Timeline")
+    for event in package["incident_timeline"]:
+        st.markdown(
+            f"<div class='workflow-card'><strong>{html.escape(event['stage'])}</strong><br>"
+            f"{html.escape(event['description'])}</div>",
+            unsafe_allow_html=True,
+        )
+
+    st.subheader("MITRE ATT&CK Mapping")
+    st.dataframe(pd.DataFrame(package["mitre_mapping"]), use_container_width=True)
+
+    st.subheader("Analyst Decision")
+    action_cols = st.columns(4)
+    actions = ["Confirm Incident", "Mark False Positive", "Escalate to Tier 2", "Close Alert"]
+    for column, action in zip(action_cols, actions):
+        if column.button(action, key=f"analyst_{action}"):
+            package["analyst_decision"] = action
+            package["saved"] = save_analysis_package(package, action)
+            st.session_state["latest_analysis"] = package
+            st.success(f"Analyst decision saved: {action}")
+    st.info(f"Current analyst decision: {package.get('analyst_decision', 'Pending Analyst Review')}")
+
+    st.subheader("Generated Reports")
+    col1, col2 = st.columns(2)
+    col1.code(package["saved"]["json_path"], language="text")
+    col2.code(package["saved"]["txt_path"], language="text")
+
+    json_path = Path(package["saved"]["json_path"])
+    txt_path = Path(package["saved"]["txt_path"])
+    if json_path.exists():
+        st.download_button(
+            "Download JSON Report",
+            json_path.read_bytes(),
+            file_name=json_path.name,
+            mime="application/json",
+        )
+    if txt_path.exists():
+        st.download_button(
+            "Download TXT Report",
+            txt_path.read_text(encoding="utf-8"),
+            file_name=txt_path.name,
+            mime="text/plain",
+        )
+
+    st.caption(f"JSON SHA-256: {package['saved']['json_hash']}")
+    st.caption(f"JSON HMAC: {package['saved']['json_hmac_signature']}")
+
+
 def report_verification() -> None:
     st.subheader("Report Integrity Verification")
     metadata_files = list_integrity_metadata()
@@ -284,6 +444,65 @@ def report_verification() -> None:
         else:
             st.error("Verification failed. The report may have been modified.")
         show_light_json(result)
+
+
+def presentation_mode() -> None:
+    st.subheader("Presentation Mode")
+    st.markdown(
+        """
+        This project demonstrates how a bank SOC can use a local LLM to speed up alert triage
+        while keeping sensitive security data inside the local environment.
+        """
+    )
+
+    st.markdown("### Architecture")
+    architecture = [
+        {
+            "stage": "1. Bank Alert Input",
+            "description": "Analyst selects a sample bank alert or enters a custom alert from SIEM, WAF, ATM, EDR, firewall, or email security systems.",
+        },
+        {
+            "stage": "2. Rule Engine",
+            "description": "Deterministic checks detect SQL injection, XSS, phishing, brute force, malware, data exfiltration, ATM fraud, and extract IOCs.",
+        },
+        {
+            "stage": "3. Local Ollama LLM",
+            "description": "The alert and rule context are sent to a local model through http://localhost:11434/api/chat. No OpenAI API is used.",
+        },
+        {
+            "stage": "4. SOC Analysis",
+            "description": "The model returns structured JSON with severity, confidence, business impact, remediation, and a final incident report.",
+        },
+        {
+            "stage": "5. Reporting and Integrity",
+            "description": "Reports are saved as JSON and TXT, then protected with SHA-256 hashes and HMAC signatures.",
+        },
+    ]
+    for item in architecture:
+        st.markdown(
+            f"<div class='workflow-card'><strong>{html.escape(item['stage'])}</strong><br>"
+            f"{html.escape(item['description'])}</div>",
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("### Why Local LLMs Fit A Bank SOC")
+    st.write(
+        "- Bank alerts may contain customer identifiers, employee emails, server names, IP addresses, and transaction patterns.\n"
+        "- A local LLM reduces the risk of sending sensitive alert content to cloud providers.\n"
+        "- IOC enrichment is kept local and limited to extracted indicators, with manual lookup links for analysts.\n"
+        "- Human analysts still validate the final incident decision."
+    )
+
+    st.markdown("### Demo Script")
+    st.write(
+        "1. Choose `llama3.2` in the sidebar.\n"
+        "2. Select the SQL injection, phishing, or malware sample alert.\n"
+        "3. Run SOC analysis.\n"
+        "4. Explain the rule-based findings and extracted IOCs.\n"
+        "5. Show the local LLM output, severity badge, timeline, and MITRE mapping.\n"
+        "6. Use an analyst action button.\n"
+        "7. Download the report and verify its integrity."
+    )
 
 
 def analysis_workspace(model: str) -> None:
@@ -318,9 +537,15 @@ def analysis_workspace(model: str) -> None:
 
         with st.spinner("Running rule-based pre-analysis..."):
             rule_analysis = analyze_alert(alert_text)
+            ioc_enrichment = enrich_indicators(rule_analysis.get("indicators", {}))
+            confidence_comparison = calculate_rule_confidence(rule_analysis)
 
         st.subheader("Rule-Based Pre-Analysis")
         show_light_json(rule_analysis)
+        st.subheader("Rule vs LLM Confidence Preview")
+        col1, col2 = st.columns(2)
+        col1.metric("Rule confidence", f"{confidence_comparison['rule_confidence_score']}/100")
+        col2.metric("IOC risk", ioc_enrichment["overall_ioc_risk_level"])
 
         try:
             with st.spinner(f"Calling local Ollama model: {model}"):
@@ -336,20 +561,36 @@ def analysis_workspace(model: str) -> None:
             rule_analysis.get("detected_categories", []),
             llm_analysis.get("attack_type", ""),
         )
-        report = build_report_record(alert_text, model, rule_analysis, llm_analysis, mitre_mapping)
+        incident_timeline = build_incident_timeline(rule_analysis, llm_analysis)
+        report = build_report_record(
+            alert_text,
+            model,
+            rule_analysis,
+            llm_analysis,
+            mitre_mapping,
+            ioc_enrichment,
+            confidence_comparison,
+            incident_timeline,
+        )
         saved = save_report(report)
-
-        st.subheader("LLM SOC Analysis")
-        show_light_json(llm_analysis)
-        st.subheader("MITRE ATT&CK Mapping")
-        st.dataframe(pd.DataFrame(mitre_mapping), use_container_width=True)
+        package = {
+            "alert_text": alert_text,
+            "model": model,
+            "rule_analysis": rule_analysis,
+            "llm_analysis": llm_analysis,
+            "mitre_mapping": mitre_mapping,
+            "ioc_enrichment": ioc_enrichment,
+            "confidence_comparison": confidence_comparison,
+            "incident_timeline": incident_timeline,
+            "analyst_decision": "Pending Analyst Review",
+            "saved": saved,
+        }
+        st.session_state["latest_analysis"] = package
 
         st.success("Incident report generated and saved with SHA-256 and HMAC integrity metadata.")
-        col1, col2 = st.columns(2)
-        col1.code(saved["json_path"], language="text")
-        col2.code(saved["txt_path"], language="text")
-        st.caption(f"JSON SHA-256: {saved['json_hash']}")
-        st.caption(f"JSON HMAC: {saved['json_hmac_signature']}")
+        render_analysis_results(package)
+    elif "latest_analysis" in st.session_state:
+        render_analysis_results(st.session_state["latest_analysis"])
 
 
 def main() -> None:
@@ -368,13 +609,15 @@ def main() -> None:
     st.sidebar.caption("API endpoint: http://localhost:11434/api/chat")
     st.sidebar.caption("No OpenAI API or cloud LLM is used.")
 
-    tabs = st.tabs(["SOC Analysis", "Dashboard", "Verify Reports"])
+    tabs = st.tabs(["SOC Analysis", "Dashboard", "Verify Reports", "Presentation"])
     with tabs[0]:
         analysis_workspace(model)
     with tabs[1]:
         dashboard()
     with tabs[2]:
         report_verification()
+    with tabs[3]:
+        presentation_mode()
 
 
 if __name__ == "__main__":

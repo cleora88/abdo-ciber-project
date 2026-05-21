@@ -34,5 +34,29 @@
     "source": "Endpoint detection and response",
     "scenario": "Endpoint compromise inside bank network",
     "alert": "EDR Alert BNK-EDR-2026-116 | Employee workstation WS-CREDIT-044 executed suspicious PowerShell command that downloaded payload from http://updates-office365.example.org/a.ps1. EDR quarantined file with SHA256 hash 2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881. Process attempted credential dumping behavior and connection to 45.77.12.89. User belongs to credit operations department."
+  },
+  {
+    "title": "Impossible Travel Login",
+    "source": "Identity and access management",
+    "scenario": "Possible account takeover of bank employee account",
+    "alert": "IAM Alert BNK-IAM-2026-041 | Employee user treasury.ops@bank.example successfully authenticated from Casablanca at 09:12 and then from Singapore IP 103.21.244.18 at 09:47. MFA push was approved on the second login after three denied prompts. User account has access to treasury reporting dashboards. Possible impossible travel, MFA fatigue, or compromised credentials."
+  },
+  {
+    "title": "Suspicious SWIFT Transfer Approval",
+    "source": "Payment fraud monitoring",
+    "scenario": "Potential fraudulent wire transfer or business email compromise",
+    "alert": "Payment Alert BNK-SWIFT-2026-018 | SWIFT transfer approval requested for 2,750,000 EUR to new beneficiary account created 19 minutes earlier. Approval came from finance.approver@bank.example outside normal working hours. Source IP 196.12.44.21 differs from the user's normal country. Email thread referenced urgent wire transfer and executive request. Possible BEC-driven fraudulent transfer."
+  },
+  {
+    "title": "Ransomware Behavior On File Server",
+    "source": "Endpoint detection and file integrity monitoring",
+    "scenario": "Possible ransomware spreading inside banking network",
+    "alert": "EDR Alert BNK-FILE-2026-063 | File server FS-BRANCH-07 renamed 8,932 files in 11 minutes and created ransom_note.txt in multiple customer document folders. Process tree shows powershell.exe launching unknown binary update_service.exe. Hash observed: 9e107d9d372bb6826bd81d3542a419d6. SMB write activity originated from workstation WS-LOAN-091. Possible ransomware encryption activity."
+  },
+  {
+    "title": "Privileged Account Misuse",
+    "source": "Privileged access management",
+    "scenario": "Potential insider threat or administrator account compromise",
+    "alert": "PAM Alert BNK-ADMIN-2026-025 | Admin account core-db-admin performed bulk export from customer_accounts and transaction_history tables at 01:33. Session originated from 10.40.8.22, outside the normal jump server path. Command history includes SELECT * FROM customer_accounts and compressed archive customer_data_export.zip. No approved change ticket found. Possible privileged account misuse or insider data theft."
   }
 ]
